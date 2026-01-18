@@ -428,3 +428,61 @@ export const calculateMeshStepVoltage = (
   if (Lt <= 0) return 0
   return (rho * Im * Ks * Ki) / Lt
 }
+
+type NBR14039Area = 'interna' | 'externa'
+
+type NBR14039Point = {
+  t: number
+  v: number
+}
+
+const nbr14039InternalCurve: NBR14039Point[] = [
+  { t: 0.01, v: 1000 },
+  { t: 0.03, v: 700 },
+  { t: 0.1, v: 480 },
+  { t: 0.3, v: 330 },
+  { t: 1, v: 230 },
+  { t: 3, v: 170 },
+  { t: 10, v: 120 },
+]
+
+const nbr14039ExternalCurve: NBR14039Point[] = [
+  { t: 0.01, v: 800 },
+  { t: 0.03, v: 550 },
+  { t: 0.1, v: 380 },
+  { t: 0.3, v: 260 },
+  { t: 1, v: 180 },
+  { t: 3, v: 130 },
+  { t: 10, v: 90 },
+]
+
+const interpolateLogLog = (points: NBR14039Point[], t: number): number => {
+  if (points.length === 0) return 0
+  if (t <= points[0].t) return points[0].v
+  if (t >= points[points.length - 1].t) return points[points.length - 1].v
+  for (let i = 0; i < points.length - 1; i++) {
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    if (t >= p1.t && t <= p2.t) {
+      const logT = Math.log10(t)
+      const logT1 = Math.log10(p1.t)
+      const logT2 = Math.log10(p2.t)
+      const logV1 = Math.log10(p1.v)
+      const logV2 = Math.log10(p2.v)
+      const ratio = (logT - logT1) / (logT2 - logT1)
+      const logV = logV1 + (logV2 - logV1) * ratio
+      return Math.pow(10, logV)
+    }
+  }
+  return 0
+}
+
+export const calculateNBR14039TouchVoltage = (
+  t: number,
+  area: NBR14039Area
+): number | null => {
+  if (!Number.isFinite(t) || t <= 0) return null
+  const clampedT = Math.min(Math.max(t, 0.01), 10)
+  const curve = area === 'interna' ? nbr14039InternalCurve : nbr14039ExternalCurve
+  return interpolateLogLog(curve, clampedT)
+}

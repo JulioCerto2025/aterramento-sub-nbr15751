@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Zap, Ruler, Activity, Layers, ShieldCheck, AlertTriangle, FileText } from 'lucide-react'
 import { calculateEquivalentRadius, calculateApparentResistivity } from './utils/soilMath'
-import { calculatePreliminaryResistanceA, calculatePreliminaryResistanceB, calculateSchwarzResistance, calculateKf, calculateDeratingFactor, calculateKi, calculateKm, calculateKs, calculateMeshTouchVoltage, calculateMeshStepVoltage, calculatePermissibleVoltages, VoltageDuration } from './utils/groundingMath'
+import { calculatePreliminaryResistanceA, calculatePreliminaryResistanceB, calculateSchwarzResistance, calculateKf, calculateDeratingFactor, calculateKi, calculateKm, calculateKs, calculateMeshTouchVoltage, calculateMeshStepVoltage, calculatePermissibleVoltages, VoltageDuration, calculateNBR14039TouchVoltage } from './utils/groundingMath'
 import { calculatePotentialField, calculateTouchMatrix, calculateStepMatrix } from './utils/potentialField'
 import { conductorMaterials, connectionTypes } from './utils/conductorData'
 
@@ -55,6 +55,7 @@ function App() {
   const [surfaceLayerResistivity, setSurfaceLayerResistivity] = useState<string>('3000') // Brita típica
   const [surfaceLayerThickness, setSurfaceLayerThickness] = useState<string>('0,1') // 10cm
   const [bodyWeight, setBodyWeight] = useState<'50' | '70'>('50')
+  const [nbr14039Area, setNbr14039Area] = useState<'interna' | 'externa'>('interna')
 
   const [results, setResults] = useState<{
     vPasso: number | null
@@ -1025,6 +1026,8 @@ function App() {
     }
 
     if (activeStep === 5) {
+      const tFault = parseNumberBR(time)
+      const nbrTouch = !isNaN(tFault) && tFault > 0 ? calculateNBR14039TouchVoltage(tFault, nbr14039Area) : null
       return (
         <div className="glass-soft p-6">
           <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
@@ -1126,41 +1129,105 @@ function App() {
                    Tempo de duração (t): <strong>{time ? formatNumberBR(parseNumberBR(time), 2) : '-'} s</strong>
                  </p>
               </div>
+
+              <div className="p-4 bg-slate-900/40 rounded border border-slate-600 text-sm text-slate-100">
+                <p className="font-semibold mb-2">
+                  Classificação da área para comparação NBR 14039 Anexo A
+                </p>
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      className="text-amber-500 focus:ring-amber-400"
+                      checked={nbr14039Area === 'interna'}
+                      onChange={() => setNbr14039Area('interna')}
+                    />
+                    <span>Situação 1 – Área interna (curva L)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      className="text-amber-500 focus:ring-amber-400"
+                      checked={nbr14039Area === 'externa'}
+                      onChange={() => setNbr14039Area('externa')}
+                    />
+                    <span>Situação 2 – Área externa (curva Lp)</span>
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 flex flex-col justify-center text-gray-900">
               <h3 className="text-lg font-semibold text-gray-800 mb-6 text-center">Limites Calculados</h3>
               
-              <div className="space-y-8">
-                <div className="text-center">
-                  <p className="text-sm text-gray-500 mb-1">
-                    Tensão de Toque Máxima (Vtoque){' '}
-                    {results.duration === 'longa' ? '(longa duração)' : results.duration === 'curta' ? '(curta duração)' : ''}
-                  </p>
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold text-amber-900">
-                      {results.vToque ? formatNumberBR(results.vToque, 0) : '-'}
-                    </span>
-                    <span className="text-xl text-amber-700">V</span>
+              <div className="space-y-6">
+                {/* NBR 15751 / IEEE 80 Section */}
+                <div>
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <span className="h-px w-8 bg-orange-200"></span>
+                    <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">NBR 15751 / IEEE 80</span>
+                    <span className="h-px w-8 bg-orange-200"></span>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 mb-1 font-medium">
+                        Tensão de Toque Máxima (Vtoque){' '}
+                        {results.duration === 'longa' ? '(longa duração)' : results.duration === 'curta' ? '(curta duração)' : ''}
+                      </p>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-4xl font-bold text-amber-900">
+                          {results.vToque ? formatNumberBR(results.vToque, 0) : '-'}
+                        </span>
+                        <span className="text-xl text-amber-700">V</span>
+                      </div>
+                    </div>
+
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 mb-1 font-medium">
+                        Tensão de Passo Máxima (Vpasso){' '}
+                        {results.duration === 'longa' ? '(longa duração)' : results.duration === 'curta' ? '(curta duração)' : ''}
+                      </p>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-4xl font-bold text-amber-900">
+                          {results.vPasso ? formatNumberBR(results.vPasso, 0) : '-'}
+                        </span>
+                        <span className="text-xl text-amber-700">V</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="text-center">
-                  <p className="text-sm text-gray-500 mb-1">
-                    Tensão de Passo Máxima (Vpasso){' '}
-                    {results.duration === 'longa' ? '(longa duração)' : results.duration === 'curta' ? '(curta duração)' : ''}
+                {/* Divider */}
+                <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-gray-300"></div>
+                </div>
+
+                {/* NBR 14039 Section */}
+                <div className="text-center opacity-80 hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">| NBR 14039 (comparativo)</span>
+                  </div>
+                  
+                  <p className="text-sm text-gray-400 mb-1">
+                    Tensão de Toque Presumida (Anexo A)
+                    <br/>
+                    <span className="text-xs">
+                    {nbr14039Area === 'interna' ? '(situação 1 – área interna)' : '(situação 2 – área externa)'}
+                    </span>
                   </p>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold text-amber-900">
-                      {results.vPasso ? formatNumberBR(results.vPasso, 0) : '-'}
+                    <span className="text-3xl font-bold text-gray-500">
+                      {nbrTouch ? formatNumberBR(nbrTouch, 0) : '-'}
                     </span>
-                    <span className="text-xl text-amber-700">V</span>
+                    <span className="text-xl text-gray-400">V</span>
                   </div>
                 </div>
               </div>
 
               <div className="mt-8 text-xs text-gray-500 text-center">
                 <p>Calculado conforme NBR 15751 / IEEE 80</p>
+                <p>Comparação adicional de toque conforme NBR 14039 Anexo A</p>
                 <p>Considerando corpo de {bodyWeight}kg e {hasSurfaceLayer ? `camada de brita (ρs=${surfaceLayerResistivity}Ω.m, hs=${surfaceLayerThickness}m)` : 'solo nativo'}</p>
               </div>
             </div>
@@ -1223,6 +1290,9 @@ function App() {
       const isTouchSafe = (results.vToque !== null) ? vMeshTouch < results.vToque : false
       const isStepSafe = (results.vPasso !== null) ? vMeshStep < results.vPasso : false
       const isSafe = isGPRSafe || (isTouchSafe && isStepSafe)
+
+      const t14039 = parseNumberBR(time)
+      const vTouchNBR14039 = !isNaN(t14039) && t14039 > 0 ? calculateNBR14039TouchVoltage(t14039, nbr14039Area) : null
 
       // Get Material Names and Objects
       const material = conductorMaterials.find(m => m.id === selectedMaterialId)
@@ -1405,6 +1475,21 @@ function App() {
                           {isTouchSafe ? 'APROVADO' : 'REPROVADO'}
                         </span>
                       </td>
+                    </tr>
+
+                    <tr className="bg-gray-50/50 text-gray-500">
+                      <td className="py-2 px-3 font-medium text-gray-400">
+                        <span className="block text-[10px] uppercase tracking-wider text-gray-300 mb-0.5">| Comparativo</span>
+                        Tensão de Toque Presumida NBR 14039
+                        <span className="block text-xs font-normal mt-0.5">
+                        {nbr14039Area === 'interna' ? '(situação 1 – área interna)' : '(situação 2 – área externa)'}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-right text-gray-400">
+                        {vTouchNBR14039 ? formatNumberBR(vTouchNBR14039, 0) : '-'}
+                      </td>
+                      <td className="py-2 px-3 text-right text-gray-300">-</td>
+                      <td className="py-2 px-3 text-center text-xs text-gray-400 italic">Apenas referência</td>
                     </tr>
 
                     {/* Tensão de Passo */}
