@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Zap, Ruler, Activity, Layers, ShieldCheck, AlertTriangle, FileText } from 'lucide-react'
+import { Zap, Activity, Layers, ShieldCheck, AlertTriangle, FileText } from 'lucide-react'
 import { calculateEquivalentRadius, calculateApparentResistivity } from './utils/soilMath'
 import { calculatePreliminaryResistanceA, calculatePreliminaryResistanceB, calculateSchwarzResistance, calculateKf, calculateDeratingFactor, calculateKi, calculateKm, calculateKs, calculateMeshTouchVoltage, calculateMeshStepVoltage, calculatePermissibleVoltages, VoltageDuration, calculateNBR14039TouchVoltage } from './utils/groundingMath'
 import { calculatePotentialField, calculateTouchMatrix, calculateStepMatrix } from './utils/potentialField'
@@ -255,321 +255,208 @@ function App() {
 
       return (
         <div className="glass-soft p-6">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
-            <Ruler className="w-5 h-5 text-amber-400" />
-            2 - Estabelecimento de geometria básica de malha
-          </h2>
-          
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Editor Visual (Esquerda - 2 colunas) */}
             <div className="lg:col-span-2 flex flex-col gap-6">
               <div className="border rounded-lg p-4 bg-gray-50 flex flex-col min-h-[500px] text-gray-900">
                 <h3 className="text-sm font-semibold mb-2 uppercase tracking-wide text-center">Editor Visual de Malha</h3>
                 <div className="flex-1 flex items-center justify-center border border-gray-200 bg-white rounded relative overflow-hidden">
                   {lx > 0 && ly > 0 ? (
                     <svg viewBox={viewBox} className="w-full h-full max-h-[500px]">
-                    {/* Grid Background */}
-                    <rect x="0" y="0" width={lx} height={ly} fill="none" stroke="#e5e7eb" strokeWidth={Math.max(lx, ly) * 0.005} />
-                    
-                    {/* Vertical Lines (Nx) */}
-                    {Array.from({ length: nx }).map((_, i) => {
-                      const x = nx > 1 ? (lx * i) / (nx - 1) : lx / 2
-                      return (
-                        <line 
-                          key={`v-${i}`} 
-                          x1={x} y1={0} 
-                          x2={x} y2={ly} 
-                          stroke="#d97706" 
-                          strokeWidth={Math.max(lx, ly) * 0.005} 
-                        />
-                      )
-                    })}
-
-                    {/* Horizontal Lines (Ny) */}
-                    {Array.from({ length: ny }).map((_, i) => {
-                      const y = ny > 1 ? (ly * i) / (ny - 1) : ly / 2
-                      return (
-                        <line 
-                          key={`h-${i}`} 
-                          x1={0} y1={y} 
-                          x2={lx} y2={y} 
-                          stroke="#d97706" 
-                          strokeWidth={Math.max(lx, ly) * 0.005} 
-                        />
-                      )
-                    })}
-
-                    {/* Nodes (Intersections) */}
-                    {Array.from({ length: nx }).map((_, i) => 
-                      Array.from({ length: ny }).map((_, j) => {
+                      <rect x="0" y="0" width={lx} height={ly} fill="none" stroke="#e5e7eb" strokeWidth={Math.max(lx, ly) * 0.005} />
+                      {Array.from({ length: nx }).map((_, i) => {
                         const x = nx > 1 ? (lx * i) / (nx - 1) : lx / 2
-                        const y = ny > 1 ? (ly * j) / (ny - 1) : ly / 2
-                        
-                        const isRod = meshRods.some(r => r.i === i && r.j === j)
-                        const nodeSize = Math.max(lx, ly) * 0.008
-                        const hitAreaSize = Math.max(lx, ly) * 0.02
-
                         return (
-                          <g 
-                            key={`n-${i}-${j}`} 
-                            onClick={() => toggleRod(i, j)} 
-                            style={{ cursor: 'pointer' }}
-                            className="group"
-                          >
-                            {/* Invisible hit area for easier clicking */}
-                            <circle cx={x} cy={y} r={hitAreaSize} fill="transparent" />
-                            
-                            {/* Rod Indicator (if present) */}
-                            {isRod && (
-                              <rect 
-                                x={x - nodeSize} 
-                                y={y - nodeSize} 
-                                width={nodeSize * 2} 
-                                height={nodeSize * 2} 
-                                fill="#10b981" 
-                                stroke="#064e3b"
-                                strokeWidth={nodeSize * 0.2}
-                              />
-                            )}
-
-                            {/* Hover hint (optional, simpler to just rely on cursor pointer) */}
-                          </g>
+                          <line
+                            key={`v-${i}`}
+                            x1={x} y1={0}
+                            x2={x} y2={ly}
+                            stroke="#d97706"
+                            strokeWidth={Math.max(lx, ly) * 0.005}
+                          />
                         )
-                      })
-                    )}
+                      })}
+                      {Array.from({ length: ny }).map((_, i) => {
+                        const y = ny > 1 ? (ly * i) / (ny - 1) : ly / 2
+                        return (
+                          <line
+                            key={`h-${i}`}
+                            x1={0} y1={y}
+                            x2={lx} y2={y}
+                            stroke="#d97706"
+                            strokeWidth={Math.max(lx, ly) * 0.005}
+                          />
+                        )
+                      })}
+                      {Array.from({ length: nx }).map((_, i) =>
+                        Array.from({ length: ny }).map((_, j) => {
+                          const x = nx > 1 ? (lx * i) / (nx - 1) : lx / 2
+                          const y = ny > 1 ? (ly * j) / (ny - 1) : ly / 2
 
-                    {/* Dimensions Arrows */}
-                    {/* Width Arrow */}
-                    <line x1={0} y1={-margin/2} x2={lx} y2={-margin/2} stroke="#6b7280" strokeWidth={Math.max(lx, ly) * 0.002} markerEnd="url(#arrow)" markerStart="url(#arrow)" />
-                    <text x={lx/2} y={-margin/1.5} textAnchor="middle" fill="#6b7280" fontSize={Math.max(lx, ly) * 0.04}>{formatNumberBR(lx, 2)}m</text>
+                          const isRod = meshRods.some(r => r.i === i && r.j === j)
+                          const nodeSize = Math.max(lx, ly) * 0.008
+                          const hitAreaSize = Math.max(lx, ly) * 0.02
 
-                    {/* Height Arrow */}
-                    <line x1={-margin/2} y1={0} x2={-margin/2} y2={ly} stroke="#6b7280" strokeWidth={Math.max(lx, ly) * 0.002} markerEnd="url(#arrow)" markerStart="url(#arrow)" />
-                    <text x={-margin/1.5} y={ly/2} textAnchor="middle" fill="#6b7280" fontSize={Math.max(lx, ly) * 0.04} transform={`rotate(-90, ${-margin/1.5}, ${ly/2})`}>{formatNumberBR(ly, 2)}m</text>
-                    
-                    <defs>
-                      <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-                        <path d="M0,0 L10,5 L0,10" fill="none" stroke="#6b7280" />
-                      </marker>
-                    </defs>
-                  </svg>
-                ) : (
-                  <div className="text-gray-400">Defina as dimensões para visualizar</div>
-                )}
-              </div>
-            </div>
-
-            {/* Resultados Comparativos de Resistência */}
-            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm text-gray-900">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-amber-500" />
-                Cálculo da Resistência de Aterramento
-              </h3>
-              
-              <div className="space-y-4">
-                {/* Opção NBR 15751 */}
-                <label 
-                  className={`relative flex items-start p-4 cursor-pointer rounded-lg border-2 transition-all ${
-                    selectedResistanceMethod === 'NBR' 
-                      ? 'border-amber-500 bg-amber-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                    <input
-                      type="radio"
-                      name="resistanceMethod"
-                      value="NBR"
-                      checked={selectedResistanceMethod === 'NBR'}
-                      onChange={() => setSelectedResistanceMethod('NBR')}
-                      className="mt-1 h-4 w-4 text-amber-600 border-gray-300 focus:ring-amber-500"
-                    />
-                  <div className="ml-3 flex-1">
-                    <div className="flex justify-between">
-                      <span className="font-bold text-gray-900">NBR 15751 (Sverak)</span>
-                      <span className="font-bold text-lg text-amber-700">
-                        {parseNumberBR(meshDepth) <= 0.25 
-                          ? (preliminaryRa ? `${formatNumberBR(preliminaryRa, 3)} Ω` : '-')
-                          : (preliminaryRb ? `${formatNumberBR(preliminaryRb, 3)} Ω` : '-')
-                        }
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Método simplificado/padrão da norma brasileira (baseado em Sverak).
-                      {parseNumberBR(meshDepth) <= 0.25 ? ' (Caso a: h ≤ 0,25 m)' : ' (Caso b: 0,25 < h ≤ 2,5 m)'}
-                    </p>
-                  </div>
-                </label>
-
-                {/* Opção IEEE 80 */}
-                <label 
-                  className={`relative flex items-start p-4 cursor-pointer rounded-lg border-2 transition-all ${
-                    selectedResistanceMethod === 'IEEE' 
-                      ? 'border-amber-500 bg-amber-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="resistanceMethod"
-                    value="IEEE"
-                    checked={selectedResistanceMethod === 'IEEE'}
-                    onChange={() => setSelectedResistanceMethod('IEEE')}
-                    className="mt-1 h-4 w-4 text-amber-600 border-gray-300 focus:ring-amber-500"
-                  />
-                  <div className="ml-3 flex-1">
-                    <div className="flex justify-between">
-                      <span className="font-bold text-gray-900">IEEE 80 (Schwarz)</span>
-                      <span className="font-bold text-lg text-amber-700">
-                         {(() => {
-                           const res = getIEEE80Resistance()
-                           return res ? `${formatNumberBR(res.resistance, 3)} Ω` : '-'
-                         })()}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Método detalhado (Schwarz Equations) com coeficientes k1, k2 baseados na geometria da malha.
-                    </p>
-                    {getIEEE80Resistance() && (
-                      <div className="mt-2 text-[10px] text-amber-800 bg-amber-100 p-2 rounded space-y-1">
-                        <div>
-                          <strong>Detalhes da IA:</strong> k1={formatNumberBR(getIEEE80Resistance()?.k1, 3)}, k2={formatNumberBR(getIEEE80Resistance()?.k2, 3)}
-                        </div>
-                        {meshRods.length > 0 && (
-                          <div className="border-t border-amber-200 pt-1 mt-1">
-                             R_malha = {formatNumberBR(getIEEE80Resistance()?.r1, 3)}Ω | 
-                             R_hastes = {formatNumberBR(getIEEE80Resistance()?.r2, 3)}Ω
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </label>
-
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                  <strong className="block mb-1">Nota sobre a escolha:</strong>
-                  O valor selecionado será adotado para os cálculos de GPR (Ground Potential Rise) nas próximas etapas.
-                  Normalmente, a NBR 15751 oferece um valor conservador e seguro, enquanto a IEEE 80 (Schwarz) oferece maior precisão para malhas retangulares complexas.
+                          return (
+                            <g
+                              key={`n-${i}-${j}`}
+                              onClick={() => toggleRod(i, j)}
+                              style={{ cursor: 'pointer' }}
+                              className="group"
+                            >
+                              <circle cx={x} cy={y} r={hitAreaSize} fill="transparent" />
+                              {isRod && (
+                                <rect
+                                  x={x - nodeSize}
+                                  y={y - nodeSize}
+                                  width={nodeSize * 2}
+                                  height={nodeSize * 2}
+                                  fill="#10b981"
+                                  stroke="#064e3b"
+                                  strokeWidth={nodeSize * 0.2}
+                                />
+                              )}
+                            </g>
+                          )
+                        })
+                      )}
+                      <line x1={0} y1={-margin / 2} x2={lx} y2={-margin / 2} stroke="#6b7280" strokeWidth={Math.max(lx, ly) * 0.002} markerEnd="url(#arrow)" markerStart="url(#arrow)" />
+                      <text x={lx / 2} y={-margin / 1.5} textAnchor="middle" fill="#6b7280" fontSize={Math.max(lx, ly) * 0.04}>{formatNumberBR(lx, 2)}m</text>
+                      <line x1={-margin / 2} y1={0} x2={-margin / 2} y2={ly} stroke="#6b7280" strokeWidth={Math.max(lx, ly) * 0.002} markerEnd="url(#arrow)" markerStart="url(#arrow)" />
+                      <text x={-margin / 1.5} y={ly / 2} textAnchor="middle" fill="#6b7280" fontSize={Math.max(lx, ly) * 0.04} transform={`rotate(-90, ${-margin / 1.5}, ${ly / 2})`}>{formatNumberBR(ly, 2)}m</text>
+                      <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                          <path d="M0,0 L10,5 L0,10" fill="none" stroke="#6b7280" />
+                        </marker>
+                      </defs>
+                    </svg>
+                  ) : (
+                    <div className="text-gray-400">Defina as dimensões para visualizar</div>
+                  )}
                 </div>
               </div>
             </div>
-            </div>
 
             {/* Inputs Geométricos (Direita) */}
-            <div className="space-y-6">
-              <h3 className="font-bold text-lg text-amber-300 border-b pb-2">Inputs Geométricos</h3>
+            <div className="space-y-2">
+              <h3 className="font-bold text-base text-amber-300 border-b pb-0.5">Inputs Geométricos</h3>
               
               {/* Dimensões */}
               <div>
-                <label className="block text-sm font-semibold text-slate-100 mb-1">
+                <label className="block text-xs font-semibold text-slate-100 mb-0.5">
                   Dimensões da malha (Comprimento x Largura)
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <div className="relative flex-1">
                     <input
                       type="text"
                       value={meshLx}
                       onChange={(e) => setMeshLx(e.target.value)}
-                      className="w-full pl-3 pr-8 py-2 border-2 border-amber-200 rounded-md bg-amber-50 focus:border-amber-400 focus:outline-none text-center font-semibold"
+                      className="w-full pl-3 pr-8 py-0.5 border-2 border-amber-200 rounded-md bg-amber-50 focus:border-amber-400 focus:outline-none text-center font-semibold text-sm"
                       placeholder="50,0"
                     />
-                    <span className="absolute right-2 top-2 text-slate-300 text-sm">m</span>
+                    <span className="absolute right-2 top-1.5 text-slate-300 text-xs">m</span>
                   </div>
-                  <span className="text-slate-200 font-bold">x</span>
+                  <span className="text-slate-200 font-semibold text-sm">x</span>
                   <div className="relative flex-1">
                     <input
                       type="text"
                       value={meshLy}
                       onChange={(e) => setMeshLy(e.target.value)}
-                      className="w-full pl-3 pr-8 py-2 border-2 border-amber-200 rounded-md bg-amber-50 focus:border-amber-400 focus:outline-none text-center font-semibold"
+                      className="w-full pl-3 pr-8 py-0.5 border-2 border-amber-200 rounded-md bg-amber-50 focus:border-amber-400 focus:outline-none text-center font-semibold text-sm"
                       placeholder="40,0"
                     />
-                    <span className="absolute right-2 top-2 text-slate-300 text-sm">m</span>
+                    <span className="absolute right-2 top-1.5 text-slate-300 text-xs">m</span>
                   </div>
                 </div>
               </div>
 
             {/* Número de Condutores */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-100 mb-1">
-                Número de condutores
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="block text-xs text-slate-300 mb-1">Direção X</span>
-                  <input
-                    type="number"
-                    value={meshNx}
-                    onChange={(e) => setMeshNx(e.target.value)}
-                    className="w-full py-2 px-3 border-2 border-amber-200 rounded-md text-center focus:outline-none focus:bg-amber-50"
-                    placeholder="11"
-                  />
-                </div>
-                <div>
-                  <span className="block text-xs text-slate-300 mb-1">Direção Y</span>
-                  <input
-                    type="number"
-                    value={meshNy}
-                    onChange={(e) => setMeshNy(e.target.value)}
-                    className="w-full py-2 px-3 border-2 border-amber-200 rounded-md text-center focus:outline-none focus:bg-amber-50"
-                    placeholder="9"
-                  />
-                </div>
-              </div>
-            </div>
-
-              {/* Profundidade */}
               <div>
-                <label className="block text-sm font-semibold text-slate-100 mb-1">
-                  Profundidade de enterramento (H)
+                <label className="block text-xs font-semibold text-slate-100 mb-0.5">
+                  Número de condutores
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={meshDepth}
-                    onChange={(e) => setMeshDepth(e.target.value)}
-                    className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    placeholder="0,5"
-                  />
-                  <span className="absolute right-2 top-2 text-slate-300 text-sm">m</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={meshNx}
+                      onChange={(e) => setMeshNx(e.target.value)}
+                      className="w-full pl-7 pr-3 py-0.5 border-2 border-amber-300 rounded-md bg-slate-900/40 text-center text-sm text-slate-50 focus:outline-none focus:border-amber-400"
+                      placeholder="11"
+                    />
+                    <span className="absolute left-2 top-1.5 text-[11px] font-semibold text-amber-200">
+                      X:
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={meshNy}
+                      onChange={(e) => setMeshNy(e.target.value)}
+                      className="w-full pl-7 pr-3 py-0.5 border-2 border-amber-300 rounded-md bg-slate-900/40 text-center text-sm text-slate-50 focus:outline-none focus:border-amber-400"
+                      placeholder="9"
+                    />
+                    <span className="absolute left-2 top-1.5 text-[11px] font-semibold text-amber-200">
+                      Y:
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Comprimento Total (Read-only) */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-100 mb-1">
-                  Comprimento total dos condutores (Lt)
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${formatNumberBR(lt, 2)}m`}
-                    className="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-gray-500 cursor-not-allowed font-mono"
-                  />
+              {/* Profundidade e Lt lado a lado */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-100 mb-0.5">
+                    Prof. enterramento (H)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={meshDepth}
+                      onChange={(e) => setMeshDepth(e.target.value)}
+                      className="w-full pl-3 pr-8 py-0.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="0,5"
+                    />
+                    <span className="absolute right-2 top-1.5 text-slate-300 text-xs">m</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-100 mb-0.5">
+                    Comp. total cond. (Lt)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${formatNumberBR(lt, 2)}m`}
+                      className="w-full px-3 py-0.5 bg-gray-100 border border-gray-200 rounded-md text-gray-500 cursor-not-allowed font-mono text-sm"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2">
                 {/* Seção do Condutor */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-100 mb-1">
+                  <label className="block text-xs font-semibold text-slate-100 mb-0.5">
                     Seção (mm²)
                   </label>
                   <div className="relative">
                     <input
                       type="text"
-                      value={meshGauge}
-                      onChange={(e) => setMeshGauge(e.target.value)}
-                      className="w-full pl-3 pr-8 py-2 border-2 border-amber-200 rounded-md focus:border-amber-400 focus:outline-none"
+                        value={meshGauge}
+                        onChange={(e) => setMeshGauge(e.target.value)}
+                        className="w-full pl-3 pr-8 py-0.5 border-2 border-amber-200 rounded-md text-sm focus:border-amber-400 focus:outline-none"
                       placeholder="50"
                     />
-                    <span className="absolute right-2 top-2 text-slate-300 text-sm">mm²</span>
+                    <span className="absolute right-2 top-1.5 text-slate-300 text-xs">mm²</span>
                   </div>
                 </div>
 
                 {/* Diâmetro do Condutor */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-100 mb-1">
+                  <label className="block text-xs font-semibold text-slate-100 mb-0.5">
                     Diâmetro (d)
                   </label>
                   <div className="relative">
@@ -577,69 +464,150 @@ function App() {
                       type="text"
                       value={meshD}
                       readOnly
-                      className="w-full pl-3 pr-10 py-2 bg-gray-100 border border-gray-200 rounded-md text-gray-600 focus:outline-none cursor-not-allowed"
+                      className="w-full pl-3 pr-10 py-0.5 bg-gray-100 border border-gray-200 rounded-md text-gray-600 text-sm focus:outline-none cursor-not-allowed"
                       placeholder="9"
                     />
-                    <span className="absolute right-3 top-2 text-slate-300 text-sm">mm</span>
+                    <span className="absolute right-3 top-1.5 text-slate-300 text-xs">mm</span>
                   </div>
                 </div>
               </div>
 
               {/* Hastes de Aterramento */}
-              <div className="border-t border-white/20 pt-4 mt-2">
-                <h3 className="font-bold text-md text-amber-300 mb-3 flex justify-between items-center">
+              <div className="border-t border-white/20 pt-1.5 mt-1.5">
+                <h3 className="font-bold text-sm text-amber-300 mb-1.5 flex justify-between items-center">
                   <span>Hastes de Aterramento</span>
                   <span className="text-xs bg-emerald-600 text-white px-2 py-1 rounded-full">{meshRods.length} inseridas</span>
                 </h3>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2">
                    {/* Comprimento Haste */}
                    <div>
-                     <label className="block text-sm font-semibold text-slate-100 mb-1">
+                     <label className="block text-xs font-semibold text-slate-100 mb-0.5">
                        Comprimento
                      </label>
                      <div className="relative">
                        <input
                          type="text"
-                         value={rodLength}
-                         onChange={(e) => setRodLength(e.target.value)}
-                         className="w-full pl-3 pr-8 py-2 border-2 border-emerald-500/50 rounded-md bg-emerald-900/20 text-slate-100 focus:border-emerald-400 focus:outline-none"
+                        value={rodLength}
+                        onChange={(e) => setRodLength(e.target.value)}
+                        className="w-full pl-3 pr-8 py-0.5 border-2 border-emerald-500/50 rounded-md bg-emerald-900/20 text-slate-100 text-sm focus:border-emerald-400 focus:outline-none"
                          placeholder="2,4"
                        />
-                       <span className="absolute right-2 top-2 text-slate-300 text-sm">m</span>
+                       <span className="absolute right-2 top-1.5 text-slate-300 text-xs">m</span>
                      </div>
                    </div>
 
                    {/* Diâmetro Haste */}
                    <div>
-                     <label className="block text-sm font-semibold text-slate-100 mb-1">
+                     <label className="block text-xs font-semibold text-slate-100 mb-0.5">
                        Diâmetro
                      </label>
                      <div className="relative">
                        <input
                          type="text"
-                         value={rodDiameter}
-                         onChange={(e) => setRodDiameter(e.target.value)}
-                         className="w-full pl-3 pr-8 py-2 border-2 border-emerald-500/50 rounded-md bg-emerald-900/20 text-slate-100 focus:border-emerald-400 focus:outline-none"
+                        value={rodDiameter}
+                        onChange={(e) => setRodDiameter(e.target.value)}
+                        className="w-full pl-3 pr-8 py-0.5 border-2 border-emerald-500/50 rounded-md bg-emerald-900/20 text-slate-100 text-sm focus:border-emerald-400 focus:outline-none"
                          placeholder="12,7"
                        />
-                       <span className="absolute right-2 top-2 text-slate-300 text-sm">mm</span>
+                       <span className="absolute right-2 top-1.5 text-slate-300 text-xs">mm</span>
                      </div>
                    </div>
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
-                  Clique nas interseções do Editor Visual para adicionar/remover hastes.
+                <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
+                  Adic./Remover Hastes - Clique nas interseções.
                 </p>
               </div>
 
-              <div className="pt-4">
-                <button 
-                  onClick={() => setActiveStep(3)}
-                  className="w-full bg-amber-600 text-white py-3 rounded-md hover:bg-amber-500 font-semibold shadow-lg transition-all transform hover:scale-[1.02]"
-                >
-                  Próxima Etapa
-                </button>
+              <div className="border-t border-white/20 pt-2 mt-2">
+                <h3 className="font-bold text-sm text-amber-300 mb-1.5 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-amber-400" />
+                  <span>Resistência de aterramento</span>
+                </h3>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label
+                    className={`relative flex flex-col p-3 cursor-pointer rounded-md border-2 text-xs transition-all ${
+                      selectedResistanceMethod === 'NBR'
+                        ? 'border-amber-400 bg-amber-500/10'
+                        : 'border-slate-600/60 hover:border-slate-400'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <input
+                        type="radio"
+                        name="resistanceMethod"
+                        value="NBR"
+                        checked={selectedResistanceMethod === 'NBR'}
+                        onChange={() => setSelectedResistanceMethod('NBR')}
+                        className="h-3.5 w-3.5 text-amber-400 border-slate-500 focus:ring-amber-500"
+                      />
+                      <span className="font-semibold text-slate-50">
+                        NBR <span className="text-slate-200">15751</span>
+                      </span>
+                    </div>
+                    <div className="text-center leading-tight mb-1">
+                      {(() => {
+                        const value =
+                          parseNumberBR(meshDepth) <= 0.25
+                            ? preliminaryRa
+                              ? formatNumberBR(preliminaryRa, 1)
+                              : '-'
+                            : preliminaryRb
+                              ? formatNumberBR(preliminaryRb, 1)
+                              : '-'
+                        return (
+                          <span className="font-bold text-sm text-amber-300">
+                            {value} <span className="text-[11px] font-semibold">Ω</span>
+                          </span>
+                        )
+                      })()}
+                    </div>
+                    <p className="text-[10px] text-slate-300">
+                      Método Sverak.
+                    </p>
+                  </label>
+
+                  <label
+                    className={`relative flex flex-col p-3 cursor-pointer rounded-md border-2 text-xs transition-all ${
+                      selectedResistanceMethod === 'IEEE'
+                        ? 'border-amber-400 bg-amber-500/10'
+                        : 'border-slate-600/60 hover:border-slate-400'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <input
+                        type="radio"
+                        name="resistanceMethod"
+                        value="IEEE"
+                        checked={selectedResistanceMethod === 'IEEE'}
+                        onChange={() => setSelectedResistanceMethod('IEEE')}
+                        className="h-3.5 w-3.5 text-amber-400 border-slate-500 focus:ring-amber-500"
+                      />
+                      <span className="font-semibold text-slate-50">
+                        IEEE <span className="text-slate-200">80</span>
+                      </span>
+                    </div>
+                    <div className="text-center leading-tight mb-1">
+                      {(() => {
+                        const res = getIEEE80Resistance()
+                        const value = res ? formatNumberBR(res.resistance, 1) : '-'
+                        return (
+                          <span className="font-bold text-sm text-amber-300">
+                            {value} <span className="text-[11px] font-semibold">Ω</span>
+                          </span>
+                        )
+                      })()}
+                    </div>
+                    <p className="text-[10px] text-slate-300">
+                      Método Schwarz.
+                    </p>
+                  </label>
+                </div>
+
+                
               </div>
+
             </div>
           </div>
         </div>
@@ -772,42 +740,44 @@ function App() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-100 mb-1">
-                  Fator de Divisão de Corrente (Sf)
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={currentDivisionFactor}
-                    onChange={(e) => setCurrentDivisionFactor(e.target.value)}
-                    className="w-full pl-3 pr-10 py-2 border-2 border-slate-500/60 bg-slate-900/40 rounded-md focus:border-amber-400 focus:outline-none text-slate-100 placeholder-slate-400"
-                    placeholder="Ex: 70"
-                  />
-                  <span className="absolute right-3 top-2 text-gray-500 text-sm font-semibold">%</span>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-100 mb-1">
+                    Fator de Divisão de Corrente (Sf)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={currentDivisionFactor}
+                      onChange={(e) => setCurrentDivisionFactor(e.target.value)}
+                      className="w-full pl-3 pr-10 py-2 border-2 border-slate-500/60 bg-slate-900/40 rounded-md focus:border-amber-400 focus:outline-none text-slate-100 placeholder-slate-400"
+                      placeholder="Ex: 70"
+                    />
+                    <span className="absolute right-3 top-2 text-gray-500 text-sm font-semibold">%</span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1">
+                    Percentual da Icc que circula na malha (Im = Icc × Sf / 100).
+                  </p>
                 </div>
-                <p className="text-xs text-slate-300 mt-1">
-                  Percentual da corrente de curto que fecha pela malha. A corrente na malha é Im = Icc × Sf / 100.
-                </p>
-              </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-100 mb-1">
-                  Tempo de Duração da Falta (t)
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="w-full pl-3 pr-10 py-2 border-2 border-slate-500/60 bg-slate-900/40 rounded-md focus:border-amber-400 focus:outline-none text-slate-100 placeholder-slate-400"
-                    placeholder="Ex: 0,5"
-                  />
-                  <span className="absolute right-3 top-2 text-gray-500 text-sm font-semibold">s</span>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-100 mb-1">
+                    Tempo de Duração da Falta (t)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      className="w-full pl-3 pr-10 py-2 border-2 border-slate-500/60 bg-slate-900/40 rounded-md focus:border-amber-400 focus:outline-none text-slate-100 placeholder-slate-400"
+                      placeholder="Ex: 0,5"
+                    />
+                    <span className="absolute right-3 top-2 text-gray-500 text-sm font-semibold">s</span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1">
+                    Tempo de falta usado no dimensionamento e nas tensões.
+                  </p>
                 </div>
-                <p className="text-xs text-slate-300 mt-1">
-                  Utilizado para dimensionamento do condutor e cálculo das tensões de passo e toque.
-                </p>
               </div>
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -865,18 +835,9 @@ function App() {
 
       return (
         <div className="glass-soft p-6">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
-            <ShieldCheck className="w-5 h-5 text-green-600" />
-            4 - Dimensionamento do Condutor
-          </h2>
-          
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Coluna da Esquerda: Inputs */}
             <div className="space-y-6">
-              <p className="text-slate-100">
-                Selecione o material e o tipo de conexão para determinar a seção mínima do condutor.
-              </p>
-
               {/* Seleção de Material */}
               <div>
                 <label className="block text-sm font-semibold text-slate-100 mb-1">
@@ -893,11 +854,6 @@ function App() {
                     </option>
                   ))}
                 </select>
-                {material && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Fusão: {material.tFusion}°C | TCAP: {material.tcap}
-                  </p>
-                )}
               </div>
 
               {/* Seleção de Conexão */}
@@ -916,14 +872,6 @@ function App() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Define a temperatura máxima suportável (Tm) conforme Tabela 2.
-                </p>
-                {selectedConnectionId === 'compression_hydraulic' && (
-                  <p className="text-xs text-gray-500 mt-1 italic">
-                    Nota: Obtida por meio de conectores com compressão por ferramenta hidráulica.
-                  </p>
-                )}
               </div>
 
               {/* Temperatura Ambiente */}
@@ -954,31 +902,16 @@ function App() {
                     />
                     <div>
                       <span className="block text-sm font-semibold text-gray-700">Usar Corrente de Curto Total (Icc)</span>
-                      <span className="text-xs text-gray-500">
-                        Por padrão, usa-se a Corrente de Malha (Im). Marque para dimensionar pelo pior caso (Icc total), recomendado para condutores de descida/conexão.
-                      </span>
                     </div>
                  </label>
-              </div>
-
-              <div className="p-4 bg-amber-50 rounded-md border border-amber-100 text-sm">
-                 <p className="text-amber-800">
-                   <strong>Parâmetros de Cálculo:</strong>
-                   <br />
-                   Corrente (If): <strong>{currentForSizing ? formatNumberBR(currentForSizing, 2) : '-'} kA</strong>
-                   <br />
-                   Tempo (t): <strong>{time ? formatNumberBR(parseNumberBR(time), 2) : '-'} s</strong>
-                   <br />
-                   Constante do Material (Kf): <strong>{calculatedKf ? formatNumberBR(calculatedKf, 2) : '-'}</strong>
-                 </p>
               </div>
             </div>
 
             {/* Coluna da Direita: Resultados */}
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 flex flex-col justify-center items-center text-center">
-              <h3 className="text-lg font-semibold text-gray-800 mb-6">Seção Mínima Calculada</h3>
+            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 flex flex-col justify-start items-stretch text-gray-900">
+              <h3 className="text-lg font-semibold text-gray-800 mb-6 text-center">Seção Mínima Calculada</h3>
               
-              <div className="mb-8">
+              <div className="mb-6 text-center">
                 <span className="text-5xl font-bold text-amber-900 block">
                   {minSection > 0 ? formatNumberBR(minSection, 2) : '-'}
                 </span>
@@ -1005,18 +938,6 @@ function App() {
                     </p>
                   </div>
 
-                  <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-left text-xs text-yellow-800 flex items-start gap-2">
-                    <Activity className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <p>
-                      <strong>Nota Normativa (6.2.4):</strong> Caso a seção calculada resulte em valor inferior ao estabelecido em 6.1 (Seção Mínima), deve ser utilizada a seção mínima estabelecida (geralmente 50mm² para malhas de cobre em subestações).
-                    </p>
-                  </div>
-                  
-                  <div className="text-left text-xs text-gray-500 mt-4">
-                    <p>Fórmula Simplificada (Eq. 5 NBR 15751):</p>
-                    <p className="font-mono mt-1 text-base font-bold text-gray-800">S = If · Kf · √t</p>
-                    <p className="mt-1">Onde Kf é calculado em função do material e das temperaturas (Ta e Tm).</p>
-                  </div>
                 </div>
               )}
             </div>
@@ -1030,21 +951,12 @@ function App() {
       const nbrTouch = !isNaN(tFault) && tFault > 0 ? calculateNBR14039TouchVoltage(tFault, nbr14039Area) : null
       return (
         <div className="glass-soft p-6">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
-            <Activity className="w-5 h-5 text-amber-500" />
-            5 - Tensões Permissíveis (Passo e Toque)
-          </h2>
-
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <p className="text-slate-100">
-                Defina os parâmetros para o cálculo das tensões máximas admissíveis de passo e toque.
-              </p>
-
+            <div className="space-y-4">
               {/* Peso do Corpo */}
               <div>
                 <label className="block text-sm font-semibold text-slate-100 mb-1">
-                  Peso do Corpo Considerado
+                  Peso Corpo Consid. (Afluência de Público/Acesso Restrito)
                 </label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -1069,22 +981,22 @@ function App() {
               </div>
 
               {/* Camada Superficial */}
-              <div className="p-4 bg-gray-50 rounded border border-gray-200">
-                <label className="flex items-center gap-2 cursor-pointer mb-4">
+              <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <label className="flex items-center gap-2 cursor-pointer mb-2">
                   <input 
                     type="checkbox"
                     checked={hasSurfaceLayer}
                     onChange={(e) => setHasSurfaceLayer(e.target.checked)}
                     className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
                   />
-                  <span className="font-semibold text-gray-700">Utilizar Camada Superficial (Brita)</span>
+                  <span className="font-semibold text-gray-700">Utilizar Camada Superficial</span>
                 </label>
 
                 {hasSurfaceLayer && (
-                  <div className="space-y-4 pl-6 border-l-2 border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4 border-l border-gray-200">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Resistividade da Camada Superficial (ρs)
+                        Resist. Camada Superf. (ρs)
                       </label>
                       <div className="relative">
                         <input
@@ -1122,60 +1034,92 @@ function App() {
                 )}
               </div>
 
-              <div className="p-4 bg-amber-50 rounded border border-amber-100 text-sm">
-                 <p className="text-amber-800">
-                   <strong>Dados da Falta (Etapa 3):</strong>
-                   <br />
-                   Tempo de duração (t): <strong>{time ? formatNumberBR(parseNumberBR(time), 2) : '-'} s</strong>
-                 </p>
+              <div className="p-4 bg-amber-50 rounded border border-amber-100 text-sm mt-3 text-left">
+                <p className="text-amber-800">
+                  <strong>Dados da Falta (Etapa 3):</strong>
+                  <br />
+                  Corrente de malha (Im):{' '}
+                  <strong>
+                    {getMeshCurrent() !== null ? `${formatNumberBR(getMeshCurrent() || 0, 2)} kA` : '-'}
+                  </strong>
+                  <br />
+                  Tempo de duração (t):{' '}
+                  <strong>{time ? `${formatNumberBR(parseNumberBR(time), 2)} s` : '-'}</strong>
+                </p>
               </div>
 
-              <div className="p-4 bg-slate-900/40 rounded border border-slate-600 text-sm text-slate-100">
-                <p className="font-semibold mb-2">
-                  Classificação da área para comparação NBR 14039 Anexo A
-                </p>
-                <div className="flex flex-col gap-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      className="text-amber-500 focus:ring-amber-400"
-                      checked={nbr14039Area === 'interna'}
-                      onChange={() => setNbr14039Area('interna')}
-                    />
-                    <span>Situação 1 – Área interna (curva L)</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      className="text-amber-500 focus:ring-amber-400"
-                      checked={nbr14039Area === 'externa'}
-                      onChange={() => setNbr14039Area('externa')}
-                    />
-                    <span>Situação 2 – Área externa (curva Lp)</span>
-                  </label>
-                </div>
+            <div className="p-4 bg-slate-900/30 rounded border border-slate-700 text-xs text-slate-100">
+              <div className="overflow-x-auto rounded border border-slate-700/70 bg-slate-950/60">
+                <table className="w-full text-[11px] border-collapse">
+                  <thead className="bg-slate-900/90">
+                    <tr className="border-b border-slate-700/80">
+                      <th rowSpan={2} className="py-1.5 px-3 text-left font-semibold align-middle">
+                        Material
+                      </th>
+                      <th colSpan={2} className="py-1.5 px-3 text-center font-semibold">
+                        Resistividade (Ω·m)
+                      </th>
+                    </tr>
+                    <tr className="border-b border-slate-700/80">
+                      <th className="py-1.5 px-3 text-center font-semibold border-l border-slate-700/80">
+                        seco
+                      </th>
+                      <th className="py-1.5 px-3 text-center font-semibold border-l border-slate-700/80">
+                        molhado
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/80">
+                    <tr>
+                      <td className="py-1.5 px-3">Brita nº 1, 2 ou 3</td>
+                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">–</td>
+                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">3 000</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3">Concreto</td>
+                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">
+                        1 200 a 280 000
+                      </td>
+                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">21 a 100</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3">Asfalto</td>
+                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">
+                        2 × 10⁶ a 30 × 10⁶
+                      </td>
+                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">
+                        10 × 10³ a 6 × 10⁶
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
+              <p className="mt-2 text-[11px] text-center text-slate-300">
+                Tabela 5 – Resistividade do material de recobrimento (ρs)
+              </p>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 flex flex-col justify-center text-gray-900">
-              <h3 className="text-lg font-semibold text-gray-800 mb-6 text-center">Limites Calculados</h3>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col justify-start text-gray-900 self-start">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3 text-center">Limites Calculados</h3>
               
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {/* NBR 15751 / IEEE 80 Section */}
                 <div>
-                  <div className="flex items-center justify-center gap-2 mb-4">
+                  <div className="flex items-center justify-center gap-1.5 mb-2">
                     <span className="h-px w-8 bg-orange-200"></span>
                     <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">NBR 15751 / IEEE 80</span>
                     <span className="h-px w-8 bg-orange-200"></span>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-3">
                     <div className="text-center">
                       <p className="text-sm text-gray-600 mb-1 font-medium">
                         Tensão de Toque Máxima (Vtoque){' '}
                         {results.duration === 'longa' ? '(longa duração)' : results.duration === 'curta' ? '(curta duração)' : ''}
                       </p>
-                      <div className="flex items-baseline justify-center gap-1">
+                      <div className="flex items-baseline justify-center gap-1.5">
                         <span className="text-4xl font-bold text-amber-900">
                           {results.vToque ? formatNumberBR(results.vToque, 0) : '-'}
                         </span>
@@ -1188,7 +1132,7 @@ function App() {
                         Tensão de Passo Máxima (Vpasso){' '}
                         {results.duration === 'longa' ? '(longa duração)' : results.duration === 'curta' ? '(curta duração)' : ''}
                       </p>
-                      <div className="flex items-baseline justify-center gap-1">
+                      <div className="flex items-baseline justify-center gap-1.5">
                         <span className="text-4xl font-bold text-amber-900">
                           {results.vPasso ? formatNumberBR(results.vPasso, 0) : '-'}
                         </span>
@@ -1199,13 +1143,13 @@ function App() {
                 </div>
 
                 {/* Divider */}
-                <div className="relative flex py-2 items-center">
+                <div className="relative flex py-1 items-center">
                     <div className="flex-grow border-t border-gray-300"></div>
                 </div>
 
                 {/* NBR 14039 Section */}
                 <div className="text-center opacity-80 hover:opacity-100 transition-opacity">
-                  <div className="flex items-center justify-center gap-2 mb-3">
+                  <div className="flex items-center justify-center gap-1.5 mb-2">
                     <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">| NBR 14039 (comparativo)</span>
                   </div>
                   
@@ -1216,19 +1160,43 @@ function App() {
                     {nbr14039Area === 'interna' ? '(situação 1 – área interna)' : '(situação 2 – área externa)'}
                     </span>
                   </p>
-                  <div className="flex items-baseline justify-center gap-1">
+                  <div className="flex items-baseline justify-center gap-1.5">
                     <span className="text-3xl font-bold text-gray-500">
                       {nbrTouch ? formatNumberBR(nbrTouch, 0) : '-'}
                     </span>
                     <span className="text-xl text-gray-400">V</span>
                   </div>
                 </div>
-              </div>
+                
+                <div className="p-4 bg-slate-900/40 rounded border border-slate-600 text-sm text-slate-100 mt-4">
+                  <div className="flex flex-col gap-2 text-left">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        className="text-amber-500 focus:ring-amber-400"
+                        checked={nbr14039Area === 'interna'}
+                        onChange={() => setNbr14039Area('interna')}
+                      />
+                      <span>
+                        Situação 1 – Área interna (curva L)
+                        <span className="ml-2 text-xs text-slate-300 font-normal">(50 V)</span>
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        className="text-amber-500 focus:ring-amber-400"
+                        checked={nbr14039Area === 'externa'}
+                        onChange={() => setNbr14039Area('externa')}
+                      />
+                      <span>
+                        Situação 2 – Área externa (curva Lp)
+                        <span className="ml-2 text-xs text-slate-300 font-normal">(25 V)</span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
 
-              <div className="mt-8 text-xs text-gray-500 text-center">
-                <p>Calculado conforme NBR 15751 / IEEE 80</p>
-                <p>Comparação adicional de toque conforme NBR 14039 Anexo A</p>
-                <p>Considerando corpo de {bodyWeight}kg e {hasSurfaceLayer ? `camada de brita (ρs=${surfaceLayerResistivity}Ω.m, hs=${surfaceLayerThickness}m)` : 'solo nativo'}</p>
               </div>
             </div>
           </div>
@@ -1996,61 +1964,62 @@ function App() {
   }
 
   const steps = [
-    { id: 1, label: '1. Modelo' },
-    { id: 2, label: '2. Geometria' },
-    { id: 3, label: '3. Corrente' },
-    { id: 4, label: '4. Condutor' },
-    { id: 5, label: '5. Pot. Seguro' },
-    { id: 6, label: '6. Pot. Real' },
+    { id: 1, label: '1. Modelagem do Solo' },
+    { id: 2, label: '2. Geometria da Malha' },
+    { id: 3, label: '3. Corrente de malha' },
+    { id: 4, label: '4. Dimens. do Condutor' },
+    { id: 5, label: '5. Potencial Seguro' },
+    { id: 6, label: '6. Potencial Calculado' },
     { id: 7, label: '7. Relatório' },
     { id: 8, label: '8. Mapa Passo' },
     { id: 9, label: '9. Mapa Toque' },
   ]
 
   return (
-    <div className="min-h-screen px-4 py-8 md:px-6 md:py-10 flex items-center justify-center">
-      <div className="max-w-6xl w-full mx-auto glass-shell px-5 py-6 md:px-8 md:py-8">
-        <header className="mb-6 md:mb-8">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <Zap className="w-10 h-10 text-yellow-300 drop-shadow-lg" />
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-50">Aterramento Subestação NBR 15751</h1>
-                <p className="text-slate-200/80 text-sm md:text-base">Fluxo guiado por etapas para projeto de malha de terra</p>
+    <div className="min-h-screen px-4 py-4 md:px-6 md:py-6">
+      <div className="max-w-7xl w-full mx-auto glass-shell px-4 py-5 md:px-8 md:py-7">
+        <div className="flex gap-6">
+          <aside className="w-56 flex-shrink-0 flex flex-col gap-4">
+            <div className="bg-amber-500/95 text-slate-900 rounded-lg px-3 py-4 shadow-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="w-7 h-7 text-yellow-700" />
+                <div className="leading-tight">
+                  <p className="text-xs font-semibold uppercase tracking-wider">Aterramento</p>
+                  <p className="text-sm font-bold">Subestação</p>
+                </div>
               </div>
+              <p className="text-xs font-semibold">NBR 15751</p>
+              <p className="mt-1 text-[10px] leading-snug">
+                Fluxo guiado por etapas para projeto de malha de terra
+              </p>
             </div>
-          </div>
-        </header>
 
-        <nav className="mb-6 md:mb-8 overflow-x-auto">
-          <div className="inline-flex rounded-full bg-slate-900/60 border border-white/10 shadow-lg backdrop-blur-xl overflow-hidden">
-            {steps.map((step, index) => {
-              const isActive = activeStep === step.id
-              const isFirst = index === 0
-              const isLast = index === steps.length - 1
+            <nav className="flex-1 flex flex-col gap-2">
+              {steps.map((step) => {
+                const isActive = activeStep === step.id
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => setActiveStep(step.id)}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-amber-500/90 text-slate-900'
+                        : 'bg-slate-900/60 text-slate-100 hover:bg-slate-800/80'
+                    }`}
+                  >
+                    {step.label}
+                  </button>
+                )
+              })}
+            </nav>
+          </aside>
 
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => setActiveStep(step.id)}
-                  className={`px-3 md:px-4 py-2 text-sm md:text-base whitespace-nowrap border-r border-white/5 last:border-r-0 transition-colors ${
-                    isActive
-                      ? 'bg-amber-500/90 text-slate-900 font-semibold'
-                      : 'bg-transparent text-slate-200 hover:bg-slate-800/60'
-                  } ${isActive && isFirst ? 'rounded-l-full' : ''} ${
-                    isActive && isLast ? 'rounded-r-full' : ''
-                  }`}
-                >
-                  {step.label}
-                </button>
-              )
-            })}
-          </div>
-        </nav>
-
-        <div className="glass-panel mt-2 md:mt-0">
-          {renderStepContent()}
+          <main className="flex-1">
+            <div className="glass-panel">
+              {renderStepContent()}
+            </div>
+          </main>
         </div>
       </div>
     </div>
