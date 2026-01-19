@@ -300,6 +300,25 @@ export const calculateMaxStepVoltage = (
   return (1000 + 6 * cs * rho_s) * (k / Math.sqrt(t))
 }
 
+const LONG_DURATION_THRESHOLD = 3
+const LONG_DURATION_BODY_CURRENT = 0.006
+
+export const calculateTolerableBodyCurrent = (
+  t: number,
+  bodyWeight: '50' | '70'
+): { ib: number | null; duration: VoltageDuration } => {
+  if (!Number.isFinite(t) || t <= 0) {
+    return { ib: null, duration: 'curta' }
+  }
+
+  if (t <= LONG_DURATION_THRESHOLD) {
+    const k = bodyWeight === '50' ? 0.116 : 0.157
+    return { ib: k / Math.sqrt(t), duration: 'curta' }
+  }
+
+  return { ib: LONG_DURATION_BODY_CURRENT, duration: 'longa' }
+}
+
 export type VoltageDuration = 'curta' | 'longa'
 
 export type PermissibleVoltagesResult = {
@@ -318,17 +337,16 @@ export const calculatePermissibleVoltages = (
     return { vPasso: 0, vToque: 0, duration: 'curta' }
   }
 
-  if (t <= 3) {
+  if (t <= LONG_DURATION_THRESHOLD) {
     const vToque = calculateMaxTouchVoltage(t, cs, rho_s, bodyWeight)
     const vPasso = calculateMaxStepVoltage(t, cs, rho_s, bodyWeight)
     return { vPasso, vToque, duration: 'curta' }
   }
 
-  const iChld = 0.006
   const baseTouchResistance = 1000 + 1.5 * cs * rho_s
   const baseStepResistance = 1000 + 6 * cs * rho_s
-  const vToqueLong = iChld * baseTouchResistance
-  const vPassoLong = iChld * baseStepResistance
+  const vToqueLong = LONG_DURATION_BODY_CURRENT * baseTouchResistance
+  const vPassoLong = LONG_DURATION_BODY_CURRENT * baseStepResistance
 
   return { vPasso: vPassoLong, vToque: vToqueLong, duration: 'longa' }
 }

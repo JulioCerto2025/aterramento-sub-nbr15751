@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Zap, Activity, Layers, ShieldCheck, AlertTriangle, FileText } from 'lucide-react'
 import { calculateEquivalentRadius, calculateApparentResistivity } from './utils/soilMath'
-import { calculatePreliminaryResistanceA, calculatePreliminaryResistanceB, calculateSchwarzResistance, calculateKf, calculateDeratingFactor, calculateKi, calculateKm, calculateKs, calculateMeshTouchVoltage, calculateMeshStepVoltage, calculatePermissibleVoltages, VoltageDuration, calculateNBR14039TouchVoltage } from './utils/groundingMath'
+import { calculatePreliminaryResistanceA, calculatePreliminaryResistanceB, calculateSchwarzResistance, calculateKf, calculateDeratingFactor, calculateKi, calculateKm, calculateKs, calculateMeshTouchVoltage, calculateMeshStepVoltage, calculatePermissibleVoltages, VoltageDuration, calculateNBR14039TouchVoltage, calculateTolerableBodyCurrent } from './utils/groundingMath'
 import { calculatePotentialField, calculateTouchMatrix, calculateStepMatrix } from './utils/potentialField'
 import { conductorMaterials, connectionTypes } from './utils/conductorData'
 
@@ -63,6 +63,11 @@ function App() {
     duration: VoltageDuration | null
   }>({ vPasso: null, vToque: null, duration: null })
 
+  const [bodyCurrentResult, setBodyCurrentResult] = useState<{
+    ib: number | null
+    duration: VoltageDuration | null
+  }>({ ib: null, duration: null })
+
   // New State for Resistance Selection
   const [selectedResistanceMethod, setSelectedResistanceMethod] = useState<'NBR' | 'IEEE'>('NBR')
   const [hasPerimeterRods, setHasPerimeterRods] = useState<boolean>(false)
@@ -120,7 +125,7 @@ function App() {
 
   useEffect(() => {
     // Recalcular Rho Aparente sempre que inputs mudarem
-    if (activeStep === 1) {
+    if (activeStep === 2) {
       calculateRhoA()
     }
   }, [rho1, rho2, layerDepth, meshLx, meshLy, soilType])
@@ -216,6 +221,7 @@ function App() {
     const t = parseNumberBR(time)
     if (isNaN(t) || t <= 0) {
       setResults({ vPasso: null, vToque: null, duration: null })
+      setBodyCurrentResult({ ib: null, duration: null })
       return
     }
 
@@ -237,10 +243,31 @@ function App() {
       vToque: permissible.vToque,
       duration: permissible.duration,
     })
+
+    const bodyCurrent = calculateTolerableBodyCurrent(t, bodyWeight)
+    setBodyCurrentResult({
+      ib: bodyCurrent.ib,
+      duration: bodyCurrent.duration,
+    })
   }, [time, hasSurfaceLayer, surfaceLayerResistivity, surfaceLayerThickness, bodyWeight, apparentRho, rho1])
 
   const renderStepContent = () => {
-    if (activeStep === 2) {
+    if (activeStep === 1) {
+      return (
+        <div className="glass-soft p-6">
+          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
+            <Activity className="w-5 h-5 text-amber-600" />
+            1. SEV - Sondagem Elet. Vert.
+          </h2>
+          <div className="text-slate-100 p-4 border border-slate-700 rounded-lg bg-slate-900/50">
+            <p className="mb-4">Funcionalidade de Sondagem Elétrica Vertical em desenvolvimento.</p>
+            <p className="text-sm text-slate-400">Esta etapa permitirá a entrada de dados de campo (Wenner/Schlumberger) para estratificação do solo.</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (activeStep === 3) {
       const lx = parseNumberBR(meshLx) || 0
       const ly = parseNumberBR(meshLy) || 0
       const nx = parseInt(meshNx) || 2
@@ -255,6 +282,10 @@ function App() {
 
       return (
         <div className="glass-soft p-6">
+          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
+            <Activity className="w-5 h-5 text-amber-500" />
+            3 - Geometria da Malha
+          </h2>
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 flex flex-col gap-6">
               <div className="border rounded-lg p-4 bg-gray-50 flex flex-col min-h-[500px] text-gray-900">
@@ -614,15 +645,16 @@ function App() {
       )
     }
 
-    if (activeStep === 1) {
+    if (activeStep === 2) {
       return (
         <div className="glass-soft p-6">
+          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
+            <Layers className="w-5 h-5 text-amber-500" />
+            2 - Modelagem do Solo
+          </h2>
           <div className="grid md:grid-cols-2 gap-8 items-start">
             <div className="glass-soft p-6 space-y-4">
-              <h2 className="text-xl font-semibold mb-2 flex items-center gap-2 text-slate-50">
-                <Layers className="w-5 h-5 text-amber-600" />
-                1 - Modelagem do solo (Anexo A)
-              </h2>
+
               <p className="text-slate-100 mb-4">
                 Cálculo da resistividade aparente (ρₐ) associada ao sistema de aterramento.
               </p>
@@ -710,12 +742,12 @@ function App() {
       )
     }
 
-    if (activeStep === 3) {
+    if (activeStep === 4) {
       return (
         <div className="glass-soft p-6">
           <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
             <Zap className="w-5 h-5 text-yellow-500" />
-            3 - Cálculo da Corrente da Malha
+            4 - Cálculo da Corrente da Malha
           </h2>
           
           <div className="max-w-2xl mx-auto">
@@ -798,7 +830,7 @@ function App() {
       )
     }
 
-    if (activeStep === 4) {
+    if (activeStep === 5) {
       // Obter dados do material e conexão selecionados
       const material = conductorMaterials.find(m => m.id === selectedMaterialId)
       const connection = connectionTypes.find(c => c.id === selectedConnectionId)
@@ -835,6 +867,10 @@ function App() {
 
       return (
         <div className="glass-soft p-6">
+          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
+            <Zap className="w-5 h-5 text-amber-500" />
+            5 - Dimens. do Condutor
+          </h2>
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Coluna da Esquerda: Inputs */}
             <div className="space-y-6">
@@ -946,42 +982,85 @@ function App() {
       )
     }
 
-    if (activeStep === 5) {
+    if (activeStep === 6) {
       const tFault = parseNumberBR(time)
       const nbrTouch = !isNaN(tFault) && tFault > 0 ? calculateNBR14039TouchVoltage(tFault, nbr14039Area) : null
+      const rhoBase = apparentRho || parseNumberBR(rho1) || 100
+      let rhoSurface = rhoBase
+      let cs = 1
+      if (hasSurfaceLayer) {
+        const rs = parseNumberBR(surfaceLayerResistivity)
+        const hs = parseNumberBR(surfaceLayerThickness)
+        if (!isNaN(rs) && !isNaN(hs)) {
+          rhoSurface = rs
+          cs = calculateDeratingFactor(rhoBase, rhoSurface, hs)
+        }
+      }
       return (
         <div className="glass-soft p-6">
+          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
+            <ShieldCheck className="w-5 h-5 text-amber-500" />
+            6 - Potencial Seguro
+          </h2>
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
-              {/* Peso do Corpo */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-100 mb-1">
-                  Peso Corpo Consid. (Afluência de Público/Acesso Restrito)
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      checked={bodyWeight === '50'} 
-                      onChange={() => setBodyWeight('50')}
-                      className="text-amber-600 focus:ring-amber-500"
-                    />
-                    <span>50 kg</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      checked={bodyWeight === '70'} 
-                      onChange={() => setBodyWeight('70')}
-                      className="text-amber-600 focus:ring-amber-500"
-                    />
-                    <span>70 kg</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Camada Superficial */}
               <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                {/* Peso do Corpo */}
+                <div className="mb-4 pb-4 border-b border-gray-200">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                    Peso Corpo Consid. (Afluência de Público/Acesso Restrito)
+                  </label>
+                  <div className="flex gap-4 mb-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        checked={bodyWeight === '50'} 
+                        onChange={() => setBodyWeight('50')}
+                        className="text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="text-gray-700">50 kg</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        checked={bodyWeight === '70'} 
+                        onChange={() => setBodyWeight('70')}
+                        className="text-amber-600 focus:ring-amber-500"
+                      />
+                      <span className="text-gray-700">70 kg</span>
+                    </label>
+                  </div>
+                  {bodyCurrentResult.ib !== null && bodyCurrentResult.duration && (
+                    <div className="text-xs text-gray-600">
+                      {bodyCurrentResult.duration === 'curta' && (
+                        <div>
+                          <p className="font-semibold text-gray-800">
+                            Ib = k / √t
+                          </p>
+                          <p className="mt-0.5">
+                            k = {bodyWeight === '50' ? '0,116' : '0,157'}; t ={' '}
+                            {time ? `${formatNumberBR(parseNumberBR(time), 2)} s` : '-'}; Ib ={' '}
+                            {formatNumberBR(bodyCurrentResult.ib * 1000, 2)} mA
+                          </p>
+                        </div>
+                      )}
+                      {bodyCurrentResult.duration === 'longa' && (
+                        <div>
+                          <p className="font-semibold text-gray-800">
+                            Ib (longa duração) = 6,00 mA
+                          </p>
+                          <p className="mt-0.5">
+                            Para t &gt; 3 s, a corrente tolerável é limitada a 6 mA, independente do peso.
+                          </p>
+                          <p className="mt-0.5 text-amber-700">
+                            Avaliar dispositivos de proteção para garantir desligamento em t ≤ 3 s.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <label className="flex items-center gap-2 cursor-pointer mb-2">
                   <input 
                     type="checkbox"
@@ -1034,169 +1113,164 @@ function App() {
                 )}
               </div>
 
-              <div className="p-4 bg-amber-50 rounded border border-amber-100 text-sm mt-3 text-left">
-                <p className="text-amber-800">
-                  <strong>Dados da Falta (Etapa 3):</strong>
-                  <br />
-                  Corrente de malha (Im):{' '}
-                  <strong>
-                    {getMeshCurrent() !== null ? `${formatNumberBR(getMeshCurrent() || 0, 2)} kA` : '-'}
-                  </strong>
-                  <br />
-                  Tempo de duração (t):{' '}
-                  <strong>{time ? `${formatNumberBR(parseNumberBR(time), 2)} s` : '-'}</strong>
+
+
+              <div className="p-4 bg-slate-900/30 rounded border border-slate-700 text-xs text-slate-100">
+                <div className="overflow-x-auto rounded border border-slate-700/70 bg-slate-950/60">
+                  <table className="w-full text-[11px] border-collapse">
+                    <thead className="bg-slate-900/90">
+                      <tr className="border-b border-slate-700/80">
+                        <th rowSpan={2} className="py-1.5 px-3 text-left font-semibold align-middle">
+                          Material
+                        </th>
+                        <th colSpan={2} className="py-1.5 px-3 text-center font-semibold">
+                          Resistividade (Ω·m)
+                        </th>
+                      </tr>
+                      <tr className="border-b border-slate-700/80">
+                        <th className="py-1.5 px-3 text-center font-semibold border-l border-slate-700/80">
+                          seco
+                        </th>
+                        <th className="py-1.5 px-3 text-center font-semibold border-l border-slate-700/80">
+                          molhado
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700/80">
+                      <tr>
+                        <td className="py-1.5 px-3">Brita nº 1, 2 ou 3</td>
+                        <td className="py-1.5 px-3 text-center border-l border-slate-700/80">–</td>
+                        <td className="py-1.5 px-3 text-center border-l border-slate-700/80">3 000</td>
+                      </tr>
+                      <tr>
+                        <td className="py-1.5 px-3">Concreto</td>
+                        <td className="py-1.5 px-3 text-center border-l border-slate-700/80">
+                          1 200 a 280 000
+                        </td>
+                        <td className="py-1.5 px-3 text-center border-l border-slate-700/80">21 a 100</td>
+                      </tr>
+                      <tr>
+                        <td className="py-1.5 px-3">Asfalto</td>
+                        <td className="py-1.5 px-3 text-center border-l border-slate-700/80">
+                          2 × 10⁶ a 30 × 10⁶
+                        </td>
+                        <td className="py-1.5 px-3 text-center border-l border-slate-700/80">
+                          10 × 10³ a 6 × 10⁶
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-2 text-[11px] text-center text-slate-300">
+                  Tabela 5 – Resistividade do material de recobrimento (ρs)
                 </p>
               </div>
-
-            <div className="p-4 bg-slate-900/30 rounded border border-slate-700 text-xs text-slate-100">
-              <div className="overflow-x-auto rounded border border-slate-700/70 bg-slate-950/60">
-                <table className="w-full text-[11px] border-collapse">
-                  <thead className="bg-slate-900/90">
-                    <tr className="border-b border-slate-700/80">
-                      <th rowSpan={2} className="py-1.5 px-3 text-left font-semibold align-middle">
-                        Material
-                      </th>
-                      <th colSpan={2} className="py-1.5 px-3 text-center font-semibold">
-                        Resistividade (Ω·m)
-                      </th>
-                    </tr>
-                    <tr className="border-b border-slate-700/80">
-                      <th className="py-1.5 px-3 text-center font-semibold border-l border-slate-700/80">
-                        seco
-                      </th>
-                      <th className="py-1.5 px-3 text-center font-semibold border-l border-slate-700/80">
-                        molhado
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-700/80">
-                    <tr>
-                      <td className="py-1.5 px-3">Brita nº 1, 2 ou 3</td>
-                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">–</td>
-                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">3 000</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1.5 px-3">Concreto</td>
-                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">
-                        1 200 a 280 000
-                      </td>
-                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">21 a 100</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1.5 px-3">Asfalto</td>
-                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">
-                        2 × 10⁶ a 30 × 10⁶
-                      </td>
-                      <td className="py-1.5 px-3 text-center border-l border-slate-700/80">
-                        10 × 10³ a 6 × 10⁶
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="mt-2 text-[11px] text-center text-slate-300">
-                Tabela 5 – Resistividade do material de recobrimento (ρs)
-              </p>
             </div>
 
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col justify-start text-gray-900 self-start">
-              <h3 className="text-lg font-semibold text-gray-800 mb-3 text-center">Limites Calculados</h3>
-              
-              <div className="space-y-4">
-                {/* NBR 15751 / IEEE 80 Section */}
-                <div>
-                  <div className="flex items-center justify-center gap-1.5 mb-2">
-                    <span className="h-px w-8 bg-orange-200"></span>
-                    <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">NBR 15751 / IEEE 80</span>
-                    <span className="h-px w-8 bg-orange-200"></span>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-1 font-medium">
-                        Tensão de Toque Máxima (Vtoque){' '}
-                        {results.duration === 'longa' ? '(longa duração)' : results.duration === 'curta' ? '(curta duração)' : ''}
-                      </p>
-                      <div className="flex items-baseline justify-center gap-1.5">
-                        <span className="text-4xl font-bold text-amber-900">
-                          {results.vToque ? formatNumberBR(results.vToque, 0) : '-'}
-                        </span>
-                        <span className="text-xl text-amber-700">V</span>
-                      </div>
-                    </div>
-
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-1 font-medium">
-                        Tensão de Passo Máxima (Vpasso){' '}
-                        {results.duration === 'longa' ? '(longa duração)' : results.duration === 'curta' ? '(curta duração)' : ''}
-                      </p>
-                      <div className="flex items-baseline justify-center gap-1.5">
-                        <span className="text-4xl font-bold text-amber-900">
-                          {results.vPasso ? formatNumberBR(results.vPasso, 0) : '-'}
-                        </span>
-                        <span className="text-xl text-amber-700">V</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="relative flex py-1 items-center">
-                    <div className="flex-grow border-t border-gray-300"></div>
-                </div>
-
-                {/* NBR 14039 Section */}
-                <div className="text-center opacity-80 hover:opacity-100 transition-opacity">
-                  <div className="flex items-center justify-center gap-1.5 mb-2">
-                    <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">| NBR 14039 (comparativo)</span>
-                  </div>
-                  
-                  <p className="text-sm text-gray-400 mb-1">
-                    Tensão de Toque Presumida (Anexo A)
-                    <br/>
-                    <span className="text-xs">
-                    {nbr14039Area === 'interna' ? '(situação 1 – área interna)' : '(situação 2 – área externa)'}
-                    </span>
-                  </p>
-                  <div className="flex items-baseline justify-center gap-1.5">
-                    <span className="text-3xl font-bold text-gray-500">
-                      {nbrTouch ? formatNumberBR(nbrTouch, 0) : '-'}
-                    </span>
-                    <span className="text-xl text-gray-400">V</span>
-                  </div>
-                </div>
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col justify-start text-gray-900 self-start">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3 text-center">Limites Calculados</h3>
                 
-                <div className="p-4 bg-slate-900/40 rounded border border-slate-600 text-sm text-slate-100 mt-4">
-                  <div className="flex flex-col gap-2 text-left">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        className="text-amber-500 focus:ring-amber-400"
-                        checked={nbr14039Area === 'interna'}
-                        onChange={() => setNbr14039Area('interna')}
-                      />
-                      <span>
-                        Situação 1 – Área interna (curva L)
-                        <span className="ml-2 text-xs text-slate-300 font-normal">(50 V)</span>
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        className="text-amber-500 focus:ring-amber-400"
-                        checked={nbr14039Area === 'externa'}
-                        onChange={() => setNbr14039Area('externa')}
-                      />
-                      <span>
-                        Situação 2 – Área externa (curva Lp)
-                        <span className="ml-2 text-xs text-slate-300 font-normal">(25 V)</span>
-                      </span>
-                    </label>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-center gap-1.5 mb-2">
+                      <span className="h-px w-8 bg-orange-200"></span>
+                      <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">NBR 15751 / IEEE 80</span>
+                      <span className="h-px w-8 bg-orange-200"></span>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600 mb-1 font-medium">
+                          Tensão de Toque Máxima (Vt){' '}
+                          {results.duration === 'longa' ? '(longa duração)' : results.duration === 'curta' ? '(curta duração)' : ''}
+                        </p>
+                        {results.vToque !== null && !isNaN(tFault) && tFault > 0 && (
+                          <p className="text-xs text-gray-500">
+                            {results.duration === 'curta'
+                              ? bodyCurrentResult.ib !== null
+                                ? `Vt = (1000 + 1,5·Cs·ρs)·Ib = (1000 + 1,5·${formatNumberBR(cs, 3)}·${formatNumberBR(rhoSurface, 0)})·${formatNumberBR(bodyCurrentResult.ib, 3)} ≈ ${formatNumberBR(results.vToque, 0)} V`
+                                : `Vt = (1000 + 1,5·Cs·ρs)·Ib`
+                              : `Vt = Ib·(1000 + 1,5·Cs·ρs) = 0,006·(1000 + 1,5·${formatNumberBR(cs, 3)}·${formatNumberBR(rhoSurface, 0)}) ≈ ${formatNumberBR(results.vToque, 0)} V`}
+                          </p>
+                        )}
+                        <div className="mt-1 flex items-baseline justify-center gap-1.5">
+                          <span className="text-4xl font-bold text-amber-900">
+                            {results.vToque ? formatNumberBR(results.vToque, 0) : '-'}
+                          </span>
+                          <span className="text-xl text-amber-700">V</span>
+                        </div>
+                      </div>
+
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600 mb-1 font-medium">
+                          Tensão de Passo Máxima (Vp){' '}
+                          {results.duration === 'longa' ? '(longa duração)' : results.duration === 'curta' ? '(curta duração)' : ''}
+                        </p>
+                        {results.vPasso !== null && !isNaN(tFault) && tFault > 0 && (
+                          <p className="text-xs text-gray-500">
+                            {results.duration === 'curta'
+                              ? bodyCurrentResult.ib !== null
+                                ? `Vp = (1000 + 6·Cs·ρs)·Ib = (1000 + 6·${formatNumberBR(cs, 3)}·${formatNumberBR(rhoSurface, 0)})·${formatNumberBR(bodyCurrentResult.ib, 3)} ≈ ${formatNumberBR(results.vPasso, 0)} V`
+                                : `Vp = (1000 + 6·Cs·ρs)·Ib`
+                              : `Vp = Ib·(1000 + 6·Cs·ρs) = 0,006·(1000 + 6·${formatNumberBR(cs, 3)}·${formatNumberBR(rhoSurface, 0)}) ≈ ${formatNumberBR(results.vPasso, 0)} V`}
+                          </p>
+                        )}
+                        <div className="mt-1 flex items-baseline justify-center gap-1.5">
+                          <span className="text-4xl font-bold text-amber-900">
+                            {results.vPasso ? formatNumberBR(results.vPasso, 0) : '-'}
+                          </span>
+                          <span className="text-xl text-amber-700">V</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              </div>
 
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col justify-start text-gray-900 self-start">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3 text-center">
+                  Tensão de Contato - NBR14039 (Anexo A)
+                </h3>
+                <div className="space-y-4">
+                  <div className="text-center">
+                  <div className="flex items-baseline justify-center gap-1.5">
+                      <span className="text-3xl font-bold text-amber-900">
+                        {nbrTouch ? formatNumberBR(nbrTouch, 0) : '-'}
+                      </span>
+                      <span className="text-xl text-amber-700">V</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-1 text-sm text-gray-800">
+                    <div className="flex flex-col gap-2 text-left">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          className="text-amber-500 focus:ring-amber-400"
+                          checked={nbr14039Area === 'interna'}
+                          onChange={() => setNbr14039Area('interna')}
+                        />
+                        <span className="text-gray-800">
+                          Situação 1 – Área interna (curva L)
+                          <span className="ml-2 text-xs text-gray-600 font-normal">(50 V)</span>
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          className="text-amber-500 focus:ring-amber-400"
+                          checked={nbr14039Area === 'externa'}
+                          onChange={() => setNbr14039Area('externa')}
+                        />
+                        <span className="text-gray-800">
+                          Situação 2 – Área externa (curva Lp)
+                          <span className="ml-2 text-xs text-gray-600 font-normal">(25 V)</span>
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1204,7 +1278,7 @@ function App() {
       )
     }
 
-    if (activeStep === 7) {
+    if (activeStep === 10) {
       // 1. Recalculate Voltages (Logic from Step 6)
       const resistance = selectedResistanceMethod === 'NBR' 
         ? (parseNumberBR(meshDepth) <= 0.25 ? getPreliminaryResistanceA() : getPreliminaryResistanceBValue())
@@ -1293,7 +1367,7 @@ function App() {
           <div className="flex justify-between items-center mb-8 print:hidden">
             <h2 className="text-2xl font-bold flex items-center gap-2 text-slate-50">
               <FileText className="w-6 h-6 text-yellow-400" />
-              7 - Relatório Final de Dimensionamento
+              10 - Relatório Final de Dimensionamento
             </h2>
             <button 
               onClick={() => window.print()}
@@ -1486,7 +1560,7 @@ function App() {
       )
     }
 
-    if (activeStep === 6) {
+    if (activeStep === 7) {
       const resistance = selectedResistanceMethod === 'NBR' 
         ? (parseNumberBR(meshDepth) <= 0.25 ? getPreliminaryResistanceA() : getPreliminaryResistanceBValue())
         : getIEEE80Resistance()?.resistance
@@ -1541,7 +1615,7 @@ function App() {
           <div className="glass-soft p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-slate-50">
               <Activity className="w-5 h-5 text-amber-500" />
-              6 - Potenciais Calculados (Malha)
+              7 - Potenciais Calculados (Malha)
             </h2>
             
             <div className="space-y-6">
@@ -1773,7 +1847,7 @@ function App() {
       return (
         <div className="glass-soft p-6">
           <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-slate-50">
-            <Layers className="w-5 h-5 text-amber-400" />
+            <Activity className="w-5 h-5 text-amber-400" />
             8 - Mapa de Tensão de Passo
           </h2>
 
@@ -1964,15 +2038,16 @@ function App() {
   }
 
   const steps = [
-    { id: 1, label: '1. Modelagem do Solo' },
-    { id: 2, label: '2. Geometria da Malha' },
-    { id: 3, label: '3. Corrente de malha' },
-    { id: 4, label: '4. Dimens. do Condutor' },
-    { id: 5, label: '5. Potencial Seguro' },
-    { id: 6, label: '6. Potencial Calculado' },
-    { id: 7, label: '7. Relatório' },
+    { id: 1, label: '1. SEV - Sondagem Elet. Vert.' },
+    { id: 2, label: '2. Modelagem do Solo' },
+    { id: 3, label: '3. Geometria da Malha' },
+    { id: 4, label: '4. Corrente de malha' },
+    { id: 5, label: '5. Dimens. do Condutor' },
+    { id: 6, label: '6. Potencial Seguro' },
+    { id: 7, label: '7. Potencial Calculado' },
     { id: 8, label: '8. Mapa Passo' },
     { id: 9, label: '9. Mapa Toque' },
+    { id: 10, label: '10. Relatório' },
   ]
 
   return (
